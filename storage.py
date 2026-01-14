@@ -5,9 +5,9 @@ class connect_database():
     def __init__(self):
         self.dbconn = sqlite3.connect("my_database.db")
         self.conn = self.dbconn.cursor()
-        self.conn.execute("""CREATE TABLE IF NOT EXISTS storage_quantity(
-            `quantity_id` INT PRIMARY KEY AUTO_INCREMENT,
-            `quantity` VARCHAR(255) NOT NULL
+        self.conn.execute("""CREATE TABLE IF NOT EXISTS storage_category(
+            `category_id` INT PRIMARY KEY AUTO_INCREMENT,
+            `category` VARCHAR(255) NOT NULL
             )""")
         self.conn.execute("""CREATE TABLE IF NOT EXISTS storage_product(
             `product_id` INT PRIMARY KEY AUTO_INCREMENT,
@@ -15,9 +15,48 @@ class connect_database():
             `category_id` INT(255) NOT NULL,
             `type_quantity` VARCHAR(10) NOT NULL,
             `product_quantity` float NOT NULL,
-            FOREGIN KEY (`type_quantity`) REFERENCES storage_quantity(`quantity_id`)
+            FOREGIN KEY (`category_id`) REFERENCES storage_category(`category_id`)
             )""")
         self.dbconn.commit()
+        
+    
+    ## query product
+    
+    def search_product(self,search):
+        try:
+            query = """SELECT 
+                        `storage_product`.`product_id`,
+                        `storage_product`.`product_name`,
+                        `storage_product`.`type_quantity`,
+                        `storage_product`.`product_quantity`,
+                        `storage_category`.`category` 
+                        FROM `product_quantity`INNER JOIN `storage_quantity` ON `storage_product`.`category_id` =`storage_category`.`category_id` WHERE"""
+            lenresult = len(search)
+            count = 1
+            
+            if lenresult == 0:
+                query+='0'
+                
+            if "name" in search:
+                query+=f"`storage_product`.`product_name` LIKE '{search['name']}'"
+                if count < lenresult:
+                    query+=' AND '
+                count+=1
+            
+            if "type_quantity" in search:
+                query+=f"`storage_product`.`type_quantity`='{search['type_quantity']}'"
+                if count < lenresult:
+                    query+=' AND '
+                count+=1
+            
+            if "category" in search:
+                query+=f"`storage_category`.`category`='{search['category']}'"
+                count+=1
+            
+            self.conn.execute(query)
+            return self.conn.fetchall()
+        except:
+            alert.error("Add product Failed!")
         
     def insert_product(self,newdata):
         try:
@@ -30,6 +69,7 @@ class connect_database():
             else:
                 alert.error("This product already added!")
         except:
+            alert.error("Add product Failed!")
             self.dbconn.rollback()
         
     def update_product(self,newdata,target_id):
@@ -43,6 +83,7 @@ class connect_database():
             else:
                 alert.error("This product already edited!") 
         except:
+            alert.error("Edit product Failed!")
             self.dbconn.rollback()
         
     def delete_product(self,target_id):
@@ -56,47 +97,53 @@ class connect_database():
             else:
                 alert.error("This product already deleted!")
         except:
+            alert.error("Delete product Failed!")
             self.dbconn.rollback()
             
+        
             
+    ## query category
     
-    def insert_quantity(self,newdata):
+    def insert_category(self,newdata):
         try:
-            self.conn.execute(f"SELECT `quantity_id` FROM `storage_quantity`WHERE `quantity`='{newdata}'")
+            self.conn.execute(f"SELECT `category_id` FROM `storage_category`WHERE `category`='{newdata}'")
             result=self.conn.fetchall()
             if len(result) < 1 :
-                self.conn.execute(f"INSERT INTO `storage_quantity`(`quantity`) VALUES ('{newdata}')")
+                self.conn.execute(f"INSERT INTO `storage_category`(`category`) VALUES ('{newdata}')")
                 self.dbconn.commit()
-                alert.successfull("This quantity add successfull!")
+                alert.successfull("This category add successfull!")
             else:
-                alert.error("This quantity already added!")
+                alert.error("This category already added!")
         except:
+            alert.error("Add category Failed!")
             self.dbconn.rollback()
         
-    def update_quantity(self,newdata,target_id):
+    def update_category(self,newdata,target_id):
         try:
-            self.conn.execute(f"SELECT `quantity_id` FROM `storage_quantity`WHERE `quantity`='{newdata}' AND `quantity_id`!={target_id}")
+            self.conn.execute(f"SELECT `category_id` FROM `storage_category`WHERE `category`='{newdata}' AND `category_id`!={target_id}")
             result=self.conn.fetchall()
             if len(result) < 1:
-                self.conn.execute(f"UPDATE `storage_quantity` SET `quantity`='{newdata}' WHERE `quantity_id`={target_id}")
+                self.conn.execute(f"UPDATE `storage_category` SET `category`='{newdata}' WHERE `category_id`={target_id}")
                 self.dbconn.commit()
-                alert.successfull("This quantity Edit successfull!")
+                alert.successfull("This category Edit successfull!")
             else:
-                 alert.error("This quantity already edited!")
+                 alert.error("This category already edited!")
         except:
+            alert.error("Edit category Failed!")
             self.dbconn.rollback()
         
-    def delete_quantity(self,target_id):
+    def delete_category(self,target_id):
         try:
-            self.conn.execute(f"SELECT `quantity_id` FROM `storage_quantity`WHERE `quantity_id`={target_id}")
+            self.conn.execute(f"SELECT `category_id` FROM `storage_category`WHERE `category_id`={target_id}")
             result=self.conn.fetchall()
             if len(result) < 1 :
-                self.conn.execute(f"DELETE FROM `storage_quantity` WHERE `quantity_id`={target_id}")
+                self.conn.execute(f"DELETE FROM `storage_category` WHERE `category_id`={target_id}")
                 self.dbconn.commit()
-                alert.successfull("This quantity delete successfull!")
+                alert.successfull("This category delete successfull!")
             else:
-                alert.error("This quantity already deleted!")
+                alert.error("This category already deleted!")
         except:
+            alert.error("Delete category Failed!")
             self.dbconn.rollback()
         
     
