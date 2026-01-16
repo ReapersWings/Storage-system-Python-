@@ -1,21 +1,22 @@
 import tkinter;
 import sqlite3;
 from tkinter import ttk
+
 class connect_database():
     def __init__(self):
         self.dbconn = sqlite3.connect("my_database.db")
         self.conn = self.dbconn.cursor()
         self.conn.execute("""CREATE TABLE IF NOT EXISTS storage_category(
-            `category_id` INT PRIMARY KEY AUTO_INCREMENT,
-            `category` VARCHAR(255) NOT NULL
+            category_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category VARCHAR(255) NOT NULL
             )""")
         self.conn.execute("""CREATE TABLE IF NOT EXISTS storage_product(
-            `product_id` INT PRIMARY KEY AUTO_INCREMENT,
-            `product_name` VARCHAR(255) NOT NULL,
-            `category_id` INT(255) NOT NULL,
-            `type_quantity` VARCHAR(10) NOT NULL,
-            `product_quantity` float NOT NULL,
-            FOREGIN KEY (`category_id`) REFERENCES storage_category(`category_id`)
+            product_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_name TEXT NOT NULL,
+            category_id INTEGER NOT NULL,
+            type_quantity TEXT NOT NULL,
+            product_quantity REAL NOT NULL,
+            FOREIGN KEY (category_id) REFERENCES storage_category(category_id)
             )""")
         self.dbconn.commit()
         
@@ -30,7 +31,7 @@ class connect_database():
                         `storage_product`.`type_quantity`,
                         `storage_product`.`product_quantity`,
                         `storage_category`.`category` 
-                        FROM `product_quantity`INNER JOIN `storage_quantity` ON `storage_product`.`category_id` =`storage_category`.`category_id` WHERE"""
+                        FROM `storage_product`INNER JOIN `storage_category` ON `storage_product`.`category_id` =`storage_category`.`category_id` WHERE"""
             lenresult = len(search)
             count = 1
             
@@ -56,7 +57,7 @@ class connect_database():
             self.conn.execute(query)
             return self.conn.fetchall()
         except:
-            alert.error("Add product Failed!")
+            alert.error("Find product Failed!")
         
     def insert_product(self,newdata):
         try:
@@ -103,6 +104,25 @@ class connect_database():
         
             
     ## query category
+    
+    def search_product(self,search):
+        try:
+            query = """SELECT 
+                        `category_id`,`category` 
+                        FROM `storage_category` WHERE"""
+            lenresult = len(search)
+            count = 1
+            
+            if lenresult == 0:
+                query+='0'
+                
+            if "name" in search:
+                query+=f"`category` LIKE '{search['name']}'"
+            
+            self.conn.execute(query)
+            return self.conn.fetchall()
+        except:
+            alert.error("Find category Failed!")
     
     def insert_category(self,newdata):
         try:
@@ -170,7 +190,28 @@ class alert:
         
 class storage:
     def __init__(self):
-        self.storage = tkinter.Tk()
-        self.table = ttk.Treeview()
+        self.inputvalue=[]
+        self.dbconn=connect_database()
         
+    def main_window(self):
+        self.storage = tkinter.Tk()
+        self.table = ttk.Treeview(self.storage)
+        self.table['columns']=("Id","product","category","type_quantity","product_quantity")
+        self.table.heading("#0",text="No.")
+        self.table.heading("Id",text="ID")
+        self.table.heading("product",text="Product")
+        self.table.heading("category",text="Category")
+        self.table.heading("type_quantity",text="Type Quantity")
+        self.table.heading("product_quantity",text="Quantity")
+        alldata=self.dbconn.search_product(self.inputvalue)
+        print(self.dbconn.search_product(self.inputvalue))
+        if len(alldata) >0: 
+            count=1
+            for data in alldata:
+                self.table.insert("","end",text=f"count" ,values=(data[0],data[1],data[4],data[2],data[3]))
+        self.table.pack(fill="x")
         self.storage.mainloop()
+
+            
+window = storage()
+window.main_window()
