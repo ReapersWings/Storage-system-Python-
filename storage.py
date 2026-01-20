@@ -4,6 +4,8 @@ from tkinter import ttk
 
 class connect_database():
     def __init__(self):
+        self.alert = alert()
+        
         self.dbconn = sqlite3.connect("my_database.db")
         self.conn = self.dbconn.cursor()
         self.conn.execute("""CREATE TABLE IF NOT EXISTS storage_category(
@@ -31,12 +33,12 @@ class connect_database():
                         `storage_product`.`type_quantity`,
                         `storage_product`.`product_quantity`,
                         `storage_category`.`category` 
-                        FROM `storage_product`INNER JOIN `storage_category` ON `storage_product`.`category_id` =`storage_category`.`category_id` WHERE"""
+                        FROM `storage_product`INNER JOIN `storage_category` ON `storage_product`.`category_id` =`storage_category`.`category_id`"""
             lenresult = len(search)
             count = 1
             
-            if lenresult == 0:
-                query+='0'
+            if lenresult > 0:
+                query+=' WHERE '
                 
             if "name" in search:
                 query+=f"`storage_product`.`product_name` LIKE '{search['name']}'"
@@ -51,13 +53,13 @@ class connect_database():
                 count+=1
             
             if "category" in search:
-                query+=f"`storage_category`.`category`='{search['category']}'"
+                query+=f"`storage_product`.`category_id`={search['category']}"
                 count+=1
             
             self.conn.execute(query)
             return self.conn.fetchall()
         except:
-            alert.error("Find product Failed!")
+            self.alert.error("Find product Failed!")
         
     def insert_product(self,newdata):
         try:
@@ -66,11 +68,11 @@ class connect_database():
             if len(result) < 1 :
                 self.conn.execute(f"INSERT INTO `storage_product`(`product_name`,`category_id`,`type_quantity`,`product_quantity`) VALUES ('{newdata[0].upper()}',{newdata[1]},'{newdata[2]}',{newdata[3]})")
                 self.dbconn.commit()
-                alert.successfull("This product add successfull!")
+                self.alert.successfull("This product add successfull!")
             else:
-                alert.error("This product already added!")
+                self.alert.error("This product already added!")
         except:
-            alert.error("Add product Failed!")
+            self.alert.error("Add product Failed!")
             self.dbconn.rollback()
         
     def update_product(self,newdata,target_id):
@@ -80,11 +82,11 @@ class connect_database():
             if len(result) < 1:
                 self.conn.execute(f"UPDATE `storage_product` SET `product_name`='{newdata[0].upper()}',`category_id`={newdata[1]},`type_quantity`='{newdata[2]}',`product_quantity`={newdata[3]} WHERE `product_id`={target_id}")
                 self.dbconn.commit()
-                alert.successfull("This product edit successfull!")
+                self.alert.successfull("This product edit successfull!")
             else:
-                alert.error("This product already edited!") 
+                self.alert.error("This product already edited!") 
         except:
-            alert.error("Edit product Failed!")
+            self.alert.error("Edit product Failed!")
             self.dbconn.rollback()
         
     def delete_product(self,target_id):
@@ -94,27 +96,27 @@ class connect_database():
             if len(result) < 1 :
                 self.conn.execute(f"DELETE FROM `storage_product` WHERE `product_id`={target_id}")
                 self.dbconn.commit()
-                alert.successfull("This product delete successfull!")
+                self.alert.successfull("This product delete successfull!")
             else:
-                alert.error("This product already deleted!")
+                self.alert.error("This product already deleted!")
         except:
-            alert.error("Delete product Failed!")
+            self.alert.error("Delete product Failed!")
             self.dbconn.rollback()
             
         
             
     ## query category
     
-    def search_product(self,search):
+    def search_category(self,search):
         try:
             query = """SELECT 
                         `category_id`,`category` 
-                        FROM `storage_category` WHERE"""
+                        FROM `storage_category`"""
             lenresult = len(search)
             count = 1
             
-            if lenresult == 0:
-                query+='0'
+            if lenresult > 0:
+                query+=' WHERE '
                 
             if "name" in search:
                 query+=f"`category` LIKE '{search['name']}'"
@@ -122,7 +124,7 @@ class connect_database():
             self.conn.execute(query)
             return self.conn.fetchall()
         except:
-            alert.error("Find category Failed!")
+            self.alert.error("Find category Failed!")
     
     def insert_category(self,newdata):
         try:
@@ -131,11 +133,11 @@ class connect_database():
             if len(result) < 1 :
                 self.conn.execute(f"INSERT INTO `storage_category`(`category`) VALUES ('{newdata}')")
                 self.dbconn.commit()
-                alert.successfull("This category add successfull!")
+                self.alert.successfull("This category add successfull!")
             else:
-                alert.error("This category already added!")
+                self.alert.error("This category already added!")
         except:
-            alert.error("Add category Failed!")
+            self.alert.error("Add category Failed!")
             self.dbconn.rollback()
         
     def update_category(self,newdata,target_id):
@@ -145,11 +147,11 @@ class connect_database():
             if len(result) < 1:
                 self.conn.execute(f"UPDATE `storage_category` SET `category`='{newdata}' WHERE `category_id`={target_id}")
                 self.dbconn.commit()
-                alert.successfull("This category Edit successfull!")
+                self.alert.successfull("This category Edit successfull!")
             else:
-                 alert.error("This category already edited!")
+                 self.alert.error("This category already edited!")
         except:
-            alert.error("Edit category Failed!")
+            self.alert.error("Edit category Failed!")
             self.dbconn.rollback()
         
     def delete_category(self,target_id):
@@ -159,11 +161,11 @@ class connect_database():
             if len(result) < 1 :
                 self.conn.execute(f"DELETE FROM `storage_category` WHERE `category_id`={target_id}")
                 self.dbconn.commit()
-                alert.successfull("This category delete successfull!")
+                self.alert.successfull("This category delete successfull!")
             else:
-                alert.error("This category already deleted!")
+                self.alert.error("This category already deleted!")
         except:
-            alert.error("Delete category Failed!")
+            self.alert.error("Delete category Failed!")
             self.dbconn.rollback()
         
     
@@ -175,7 +177,7 @@ class alert:
         self.window.title("Error")
         label = tkinter.Label(self.window,label=alert)
         label.pack()
-        button = tkinter.Button(self.window,text="Ok",command=self.window.destroy())
+        button = tkinter.Button(self.window,text="Ok",command=self.window.destroy)
         button.pack()
         self.window.mainloop()
         
@@ -183,14 +185,14 @@ class alert:
         self.window.title("Success")
         label = tkinter.Label(self.window,label=alert)
         label.pack()
-        button = tkinter.Button(self.window,text="Ok",command=self.window.destroy())
+        button = tkinter.Button(self.window,text="Ok",command=self.window.destroy)
         button.pack()
         self.window.mainloop()
     
         
 class storage:
     def __init__(self):
-        self.inputvalue=[]
+        self.inputvalue={}
         self.dbconn=connect_database()
         
     def main_window(self):
@@ -209,9 +211,75 @@ class storage:
             count=1
             for data in alldata:
                 self.table.insert("","end",text=f"count" ,values=(data[0],data[1],data[4],data[2],data[3]))
-        self.table.pack(fill="x")
-        self.storage.mainloop()
+                count+=1
+        self.table.pack(fill="both",side="left")
+        
+        div=tkinter.Frame(
+            self.storage,
+            bd=3,
+            relief="solid",
+            padx=12,
+            pady=12
+        )
+        div.pack(fill="both",side="right")
+        
+        div_search = tkinter.LabelFrame(
+            div,
+            bd=3,
+            relief="solid",
+            text="Search Product :",
+            padx=10,
+            pady=10
+        )
+        div_search.pack(fill="both",side="top")
+        
+        ## Product search
+        self.product_name_var = tkinter.StringVar()
+        tkinter.Label(div_search,text="Product Name:").pack()
+        product_name_search = tkinter.Entry(div_search , textvariable=self.product_name_var)
+        product_name_search.pack()
+        
+        ##Category search
+        option_category ={}
+        all_category = self.dbconn.search_category([])
+        for category in all_category:
+            option_category[category[1]]=category[0]
+        
+        print(option_category)
+        tkinter.Label(div_search,text="Category:").pack()
+        self.product_category_var = tkinter.StringVar()
+        category_select = ttk.Combobox(div_search,
+                     textvariable=self.product_category_var,
+                     values=list(option_category.keys())
+                     )
+        category_select.pack()
+        
+        ##Type Quantity Search
+        option_type_quantity={}
+        
+        print(option_type_quantity)
+        tkinter.Label(div_search,text="Type Quantity:").pack()
+        self.product_type_quantity_var = tkinter.StringVar()
+        type_quantity_select = ttk.Combobox(div_search,
+                     textvariable=self.product_type_quantity_var,
+                     values=option_type_quantity
+                     )
+        type_quantity_select.pack()
 
-            
+
+        button = tkinter.Button( div_search,text="Search", command=self.button_search_product )
+        button.pack()
+        
+        self.storage.mainloop()
+        
+    def button_search_product(self):
+        self.inputvalue["name"]=self.product_name_var.get()
+        self.inputvalue["type_quantity"]=self.product_type_quantity_var.get()
+        self.inputvalue["category"]=self.product_category_var.get()
+        self.dbconn.search_product(self.inputvalue)
+        
+
+    
+    
 window = storage()
 window.main_window()
