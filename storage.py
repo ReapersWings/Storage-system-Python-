@@ -41,7 +41,7 @@ class connect_database():
                 query+=' WHERE '
                 
             if "name" in search:
-                query+=f"`storage_product`.`product_name` LIKE '{search['name']}'"
+                query+=f"`storage_product`.`product_name` LIKE '{search['name'].upper()}'"
                 if count < lenresult:
                     query+=' AND '
                 count+=1
@@ -59,7 +59,7 @@ class connect_database():
             self.conn.execute(query)
             return self.conn.fetchall()
         except:
-            self.alert.error("Find product Failed!")
+            self.alert.error("Search product Failed!")
         
     def insert_product(self,newdata):
         try:
@@ -103,7 +103,12 @@ class connect_database():
             self.alert.error("Delete product Failed!")
             self.dbconn.rollback()
             
-        
+    def list_diff_type_quantity(self):
+        try:
+            self.conn.execute("SELECT `type_quantity` ,COUNT(`product_id`) FROM `storage_product` GROUP BY `type_quantity`")
+            return self.conn.fetchall()
+        except:
+            self.alert.error("Search product Failed!")
             
     ## query category
     
@@ -124,7 +129,7 @@ class connect_database():
             self.conn.execute(query)
             return self.conn.fetchall()
         except:
-            self.alert.error("Find category Failed!")
+            self.alert.error("Search Category Failed!")
     
     def insert_category(self,newdata):
         try:
@@ -171,29 +176,32 @@ class connect_database():
     
 class alert:
     def __init__(self):
-        self.window = tkinter.Tk()
+        if hasattr(self, "window") and self.window.winfo_exists():
+            self.window.destroy
         
     def error(self,alert):
+        self.window = tkinter.Tk()
         self.window.title("Error")
-        label = tkinter.Label(self.window,label=alert)
+        label = tkinter.Label(self.window,text=alert)
         label.pack()
         button = tkinter.Button(self.window,text="Ok",command=self.window.destroy)
         button.pack()
         self.window.mainloop()
         
     def successfull(self,alert):
+        self.window = tkinter.Tk()
         self.window.title("Success")
-        label = tkinter.Label(self.window,label=alert)
+        label=tkinter.Label(self.window,text=alert)
         label.pack()
         button = tkinter.Button(self.window,text="Ok",command=self.window.destroy)
         button.pack()
         self.window.mainloop()
-    
         
 class storage:
     def __init__(self):
         self.inputvalue={}
         self.dbconn=connect_database()
+        self.window_effect = window_effect()
         
     def main_window(self):
         self.storage = tkinter.Tk()
@@ -205,13 +213,7 @@ class storage:
         self.table.heading("category",text="Category")
         self.table.heading("type_quantity",text="Type Quantity")
         self.table.heading("product_quantity",text="Quantity")
-        alldata=self.dbconn.search_product(self.inputvalue)
-        print(self.dbconn.search_product(self.inputvalue))
-        if len(alldata) >0: 
-            count=1
-            for data in alldata:
-                self.table.insert("","end",text=f"count" ,values=(data[0],data[1],data[4],data[2],data[3]))
-                count+=1
+        self.treeview_refresh()
         self.table.pack(fill="both",side="left")
         
         div=tkinter.Frame(
@@ -255,7 +257,7 @@ class storage:
         category_select.pack()
         
         ##Type Quantity Search
-        option_type_quantity={}
+        option_type_quantity=self.dbconn.list_diff_type_quantity()
         
         print(option_type_quantity)
         tkinter.Label(div_search,text="Type Quantity:").pack()
@@ -266,8 +268,20 @@ class storage:
                      )
         type_quantity_select.pack()
 
-
-        button = tkinter.Button( div_search,text="Search", command=self.button_search_product )
+        button = tkinter.Button( div_search,text="Search", command=self.button_search_product,width=16)
+        button.pack()
+        
+        div_effect = tkinter.LabelFrame(
+            div,
+            bd=3,
+            relief="solid",
+            text="Effect Product :",
+            padx=10,
+            pady=10
+        )
+        div_effect.pack(fill="both",side="bottom")
+        
+        button = tkinter.Button( div_effect,text="Add product", command=self.window_effect.window_add_product ,width=16)
         button.pack()
         
         self.storage.mainloop()
@@ -277,9 +291,115 @@ class storage:
         self.inputvalue["type_quantity"]=self.product_type_quantity_var.get()
         self.inputvalue["category"]=self.product_category_var.get()
         self.dbconn.search_product(self.inputvalue)
+        self.treeview_refresh()
         
+    def treeview_refresh(self):
+        alldata=self.dbconn.search_product(self.inputvalue)
+        print(self.dbconn.search_product(self.inputvalue))
+        if len(alldata) >0: 
+            count=1
+            for data in alldata:
+                self.table.insert("","end",text=f"count" ,values=(data[0],data[1],data[4],data[2],data[3]))
+                count+=1
 
+class window_effect:
+    def __init__(self):
+        self.dbconn = connect_database()
+        self.inputvalue=[]
+        self.condition_set = condition_set()
+        
+    def window_add_product(self):
+        self.window_add = tkinter.Tk()
+        self.window_add.title("Add Product")
+        div_effect = tkinter.LabelFrame(
+            self.window_add,
+            bd=3,
+            relief="solid",
+            text="Add Product :",
+            padx=10,
+            pady=10
+        )
+        div_effect.pack(fill="both",side="top")
+        
+        self.product_name_var = tkinter.StringVar()
+        tkinter.Label(div_effect,text="Product Name:").pack()
+        product_name = tkinter.Entry(div_effect , textvariable=self.product_name_var)
+        product_name.pack()
+        
+        option_category ={}
+        all_category = self.dbconn.search_category([])
+        for category in all_category:
+            option_category[category[1]]=category[0]
+        
+        print(option_category)
+        tkinter.Label(div_effect,text="Category:").pack()
+        self.product_category_var = tkinter.StringVar()
+        category_select = ttk.Combobox(div_effect,
+                     textvariable=self.product_category_var,
+                     values=list(option_category.keys())
+                     )
+        category_select.pack()
+        
+        option_type_quantity=self.dbconn.list_diff_type_quantity()
+        tkinter.Label(div_effect,text="Type Quantity:").pack()
+        self.product_type_quantity_var = tkinter.StringVar()
+        type_quantity_select = ttk.Combobox(div_effect,
+                     textvariable=self.product_type_quantity_var,
+                     values=option_type_quantity
+                     )
+        type_quantity_select.pack()
+        
+        self.quantity_var = tkinter.StringVar()
+        tkinter.Label(div_effect,text="Quantity :").pack()
+        Quantity = tkinter.Entry(div_effect , textvariable=self.quantity_var)
+        Quantity.pack()
+        
+        button =tkinter.Button(div_effect, text="Insert", command=self.f_insert_product ,width=16)
+        button.pack()
+        
+        self.window_add.mainloop()
     
+    def f_insert_product(self):
+        self.error_warning={}
+        error_count = 0
+        if   self.product_name_var.get() != "":
+            self.inputvalue.append(self.product_name_var.get())
+        else:
+            self.error_warning['product_name']='please input the product name'
+            error_count+=1
+            
+        if self.product_category_var.get() != "":
+            self.inputvalue.append(self.product_category_var.get())
+        else:
+            self.error_warning['category']='please input the category'
+            error_count+=1
+            
+        if self.product_type_quantity_var.get() != "":    
+            self.inputvalue.append(self.product_type_quantity_var.get())
+        else:
+            self.error_warning['type_quantity']='please input the type quantity'
+            error_count+=1
+            
+        if self.quantity_var.get() != "":
+            if self.condition_set.in_numeric(self.quantity_var.get()):
+                self.inputvalue.append(float(self.quantity_var.get()))
+        else:
+            self.error_warning['quantity']='please input the quantity'
+            error_count+=1
+        
+        if error_count < 0 :
+            self.dbconn.insert_product(self.inputvalue)
+        elif error_count > 0:
+            self.window_add_product()
+                
+        
+class condition_set:
+    def in_numeric(string):
+        try:
+            float(string)
+            return True
+        except:
+            return False
     
 window = storage()
 window.main_window()
