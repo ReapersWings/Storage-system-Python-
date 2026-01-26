@@ -237,6 +237,7 @@ class storage:
         self.table.heading("product_quantity",text="Quantity")
         self.treeview_refresh()
         self.table.pack(fill="both",side="left")
+        self.table.bind("<<TreeviewSelect>>",)
         
         div=tkinter.Frame(
             self.storage,
@@ -299,17 +300,20 @@ class storage:
         button = tkinter.Button( div_search,text="Search", command=self.button_search_product,width=16)
         button.pack()
         
-        div_effect = tkinter.LabelFrame(
+        div_insert = tkinter.LabelFrame(
             div,
             bd=3,
             relief="solid",
-            text="Effect Product :",
+            text="insert Product :",
             padx=10,
             pady=10
         )
-        div_effect.pack(fill="both",side="bottom")
+        div_insert.pack(fill="both",side="bottom")
         
-        button = tkinter.Button( div_effect,text="Add product", command=self.window_effect.window_add_product ,width=16)
+        button = tkinter.Button( div_insert,text="Add product", command=self.window_effect.window_add_product ,width=16)
+        button.pack()
+        
+        button = tkinter.Button( div_insert,text="Add category", command=self.window_effect.window_add_category ,width=16)
         button.pack()
         
         self.storage.mainloop()
@@ -319,6 +323,9 @@ class storage:
         self.inputvalue["type_quantity"]=self.product_type_quantity_var.get()
         self.inputvalue["category"]=self.option_category[self.product_category_var.get()]
         self.treeview_refresh()
+        
+    def f_item_selected(self,event):
+        selected_item = self.tree.selection()
         
     def treeview_refresh(self):
         self.table.delete(*self.table.get_children())
@@ -483,7 +490,66 @@ class window_effect:
                 self.window_add_product()
         elif error_count > 0:
             self.window_add_product()
+            
+    def window_add_category(self):
+        if hasattr(self,"window_insert_category") and self.window_insert_category.winfo_exists:
+            self.window_insert_category.destroy()
+            del self.window_insert_category
+        self.window_insert_category = tkinter.Tk()
+        self.window_insert_category.title("Add Product")
+        div_effect = tkinter.LabelFrame(
+            self.window_insert_category,
+            bd=3,
+            relief="solid",
+            text="Add Product :",
+            padx=10,
+            pady=10
+        )
+        div_effect.pack(fill="both",side="top")
+        
+        self.category_var = tkinter.StringVar()
+        tkinter.Label(div_effect,text="Quantity :").pack()
+        category = tkinter.Entry(div_effect , textvariable=self.category_var)
+        category.pack()
+        error_category = tkinter.Label(div_effect,fg="red").pack()
+        
+        if hasattr(self,"window_add_category_error_warning") and len(self.window_add_category_error_warning) >0 :
                 
+            if "category" in self.window_add_category_error_warning:
+                category['highlightthickness']=2
+                #product_name['highlightbackground']="red"
+                category['highlightcolor']="red"
+                self.category_var.set(self.window_add_category_old_value[3])
+                error_category['text']=self.window_add_category_error_warning['quantity']
+                
+            del self.window_add_category_error_warning
+        
+        button =tkinter.Button(div_effect, text="Insert", command=self.f_insert_category ,width=16)
+        button.pack()
+        
+        self.window_insert_category.mainloop()
+           
+    def f_insert_category(self):
+        self.window_add_category_error_warning={}
+        error_count = 0
+        self.window_add_category_old_value=[]
+
+        self.window_add_category_old_value.append(self.product_category_var.get())
+        
+        if   self.product_name_var.get() == "":
+            self.inputvalue.append(self.product_name_var.get())
+        else:
+            self.window_add_category_error_warning['product_name']='please input the category !'
+            error_count+=1
+        
+        if error_count < 0 :
+            result = self.dbconn.insert_product(self.inputvalue)
+            if result :
+                self.window_insert_category.destroy()
+            else:
+                self.window_add_category()
+        elif error_count > 0:
+            self.window_add_category()
         
 class condition_set:
     def in_numeric(string):
