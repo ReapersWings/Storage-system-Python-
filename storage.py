@@ -300,21 +300,26 @@ class storage:
         button = tkinter.Button( div_search,text="Search", command=self.button_search_product,width=16)
         button.pack()
         
-        div_insert = tkinter.LabelFrame(
+        div_effect = tkinter.LabelFrame(
             div,
             bd=3,
             relief="solid",
-            text="insert Product :",
+            text="Product :",
             padx=10,
             pady=10
         )
-        div_insert.pack(fill="both",side="bottom")
+        div_effect.pack(fill="both",side="bottom")
         
-        button = tkinter.Button( div_insert,text="Add product", command=self.window_effect.window_add_product ,width=16)
-        button.pack()
+        add_product_button = tkinter.Button( div_effect,text="Add Product", command=self.window_effect.window_add_product ,width=16)
+        add_product_button.pack()
         
-        button = tkinter.Button( div_insert,text="Add category", command=self.window_effect.window_add_category ,width=16)
-        button.pack()
+        add_category_button = tkinter.Button( div_effect,text="Add Category", command=self.window_effect.window_add_category ,width=16)
+        add_category_button.pack()
+        
+        self.delete_button = tkinter.Button( div_effect,text="Delete Product", command=self.f_delete_data , state="disabled" ,width=16)
+        self.delete_button.pack()
+        
+        
         
         self.storage.mainloop()
         
@@ -325,7 +330,20 @@ class storage:
         self.treeview_refresh()
         
     def f_item_selected(self,event):
-        selected_item = self.tree.selection()
+        selected_item = self.table.selection()
+        if not selected_item :
+            self.delete_button["state"]="disabled"
+        else:
+            self.delete_button["state"]="normal"
+        
+        
+    
+    def f_delete_data(self):
+        selected_item = self.table.selection()
+        result = self.dbconn.delete_product(selected_item[0])
+        if result :
+            self.treeview_refresh()
+            
         
     def treeview_refresh(self):
         self.table.delete(*self.table.get_children())
@@ -335,7 +353,7 @@ class storage:
             if len(alldata) >0: 
                 count=1
                 for data in alldata:
-                    self.table.insert("","end",text=f"count" ,values=(data[0],data[1],data[4],data[2],data[3]))
+                    self.table.insert("","end",text=f"{count}" ,values=(data[0],data[1],data[4],data[2],data[3]))
                     count+=1
         
 
@@ -351,6 +369,111 @@ class window_effect:
             del self.window_add
         self.window_add = tkinter.Tk()
         self.window_add.title("Add Product")
+        div_effect = tkinter.LabelFrame(
+            self.window_add,
+            bd=3,
+            relief="solid",
+            text="Add Product :",
+            padx=10,
+            pady=10
+        )
+        div_effect.pack(fill="both",side="top")
+        
+        self.product_name_var = tkinter.StringVar()
+        tkinter.Label(div_effect,text="Product Name:").pack()
+        product_name = tkinter.Entry(div_effect , textvariable=self.product_name_var)
+        product_name.pack()
+        error_product = tkinter.Label(div_effect,fg="red").pack()
+        
+        self.option_category ={}
+        all_category = self.dbconn.search_category([])
+        if self.condition_set.result_query_search(all_category):
+            for category in all_category:
+                self.option_category[category[1]]=category[0]
+            
+            print(self.option_category)
+            tkinter.Label(div_effect,text="Category:").pack()
+            self.product_category_var = tkinter.StringVar()
+            category_select = ttk.Combobox(div_effect,
+                        textvariable=self.product_category_var,
+                        values=list(self.option_category.keys()),
+                        state="readonly"
+                        )
+            category_select.pack()
+            error_category = tkinter.Label(div_effect,fg="red").pack()
+        else:
+            self.window_add.destroy()
+        
+        option_type_quantity=self.dbconn.list_diff_type_quantity()
+        if self.condition_set.result_query_search(option_type_quantity) :
+            tkinter.Label(div_effect,text="Type Quantity:").pack()
+            self.product_type_quantity_var = tkinter.StringVar()
+            type_quantity_select = ttk.Combobox(div_effect,
+                        textvariable=self.product_type_quantity_var,
+                        values=option_type_quantity
+                        )
+            type_quantity_select.pack()
+            error_type_quantity = tkinter.Label(div_effect,fg="red").pack()
+        else:
+            self.window_add.destroy()
+        
+        self.quantity_var = tkinter.StringVar()
+        tkinter.Label(div_effect,text="Quantity :").pack()
+        Quantity = tkinter.Entry(div_effect , textvariable=self.quantity_var)
+        Quantity.pack()
+        error_quantity = tkinter.Label(div_effect,fg="red").pack()
+        
+        if hasattr(self,"update_old_value"):
+            self.product_name_var.set(self.old_value[0])
+            self.product_category_var.set(self.old_value[1])
+            self.product_type_quantity_var.set(self.old_value[2])
+            self.quantity_var.set(self.old_value[3])
+        
+        if hasattr(self,"window_add_error_warning") and len(self.window_add_error_warning) >0 :
+            # combobox style
+            style = ttk.Style()
+            style.configure(
+                "Red.TCombobox",
+                bordercolor="red",
+                lightcolor="red",
+                darkcolor="red"
+            )
+            if "product_name" in self.window_add_error_warning:
+                
+                product_name['highlightthickness']=2
+                #product_name['highlightbackground']="red"
+                product_name['highlightcolor']="red"
+                error_product['text']=self.window_add_error_warning['product_name']
+                
+            if "category" in self.window_add_error_warning:
+                category_select['style']="Red.TCombobox"
+                error_category['text']=self.window_add_error_warning['category']
+                
+            if "type_quantity" in self.window_add_error_warning:
+                type_quantity_select['style']="Red.TCombobox"
+                
+                error_type_quantity['text']=self.window_add_error_warning['type_quantity']
+                
+            if "quantity" in self.window_add_error_warning:
+                product_name['highlightthickness']=2
+                #product_name['highlightbackground']="red"
+                product_name['highlightcolor']="red"
+                
+                error_quantity['text']=self.window_add_error_warning['quantity']
+                
+            del self.window_add_error_warning
+        
+        button =tkinter.Button(div_effect, text="Edit", command=self.f_insert_product ,width=16)
+        button.pack()
+        
+        self.window_add.mainloop()
+        
+    def window_add_product(self):
+        if hasattr(self,"window_add") and self.window_add.winfo_exists:
+            self.window_add.destroy()
+            del self.window_add
+        self.window_add = tkinter.Tk()
+        self.window_add.title("Edit Product")
         div_effect = tkinter.LabelFrame(
             self.window_add,
             bd=3,
