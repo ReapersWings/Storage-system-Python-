@@ -62,6 +62,19 @@ class connect_database():
             self.alert.error("Search product Failed!")
             return False
         
+    def id_search_product(self , target_id):
+        try:
+            self.conn.execute(f"""SELECT 
+                        `storage_product`.`product_name`,
+                        `storage_product`.`type_quantity`,
+                        `storage_product`.`product_quantity`,
+                        `storage_category`.`category` 
+                        FROM `storage_product`INNER JOIN `storage_category` ON `storage_product`.`category_id` =`storage_category`.`category_id` WHERE `storage_product`.`product_id`={target_id}""")
+            return self.conn.fetchall()
+        except:
+            self.alert.error("Search product Failed!")
+            return False
+        
     def insert_product(self,newdata):
         try:
             self.conn.execute(f"SELECT `product_id` FROM `storage_product`WHERE `product_name`='{newdata[0].upper()}'")
@@ -319,6 +332,9 @@ class storage:
         self.delete_button = tkinter.Button( div_effect,text="Delete Product", command=self.f_delete_data , state="disabled" ,width=16)
         self.delete_button.pack()
         
+        self.update_button = tkinter.Button( div_effect,text="Edit Product" , state="disabled" ,width=16)
+        self.update_button.pack()
+        
         
         
         self.storage.mainloop()
@@ -333,9 +349,12 @@ class storage:
         selected_item = self.table.selection()
         if not selected_item :
             self.delete_button["state"]="disabled"
+            self.update_button["state"]="disabled"
+            self.update_button["command"]=self.window_effect.window_edit_product(selected_item[0])
         else:
             self.delete_button["state"]="normal"
-        
+            self.update_button["state"]="normal"
+            self.update_button["command"]=""
         
     
     def f_delete_data(self):
@@ -363,25 +382,36 @@ class window_effect:
         self.inputvalue=[]
         self.condition_set = condition_set()
         
-    def window_add_product(self):
-        if hasattr(self,"window_add") and self.window_add.winfo_exists:
-            self.window_add.destroy()
-            del self.window_add
-        self.window_add = tkinter.Tk()
-        self.window_add.title("Add Product")
+    def window_edit_product(self ,target_id):
+        if target_id != 0 and hasattr(self , "window_edit_error_warning")!= True:
+            self.update_id = target_id
+            result_search_id = self.dbconn.id_search_product(self.update_id)
+            if self.condition_set.result_query_search(result_search_id):
+                self.update_old_value=[]
+                self.update_old_value.append(result_search_id[0])
+                self.update_old_value.append(result_search_id[3])
+                self.update_old_value.append(result_search_id[1])
+                self.update_old_value.append(result_search_id[2])
+            else:
+                self.window_effect.destroy()
+        if hasattr(self,"window_effect") and self.window_effect.winfo_exists:
+            self.window_effect.destroy()
+            del self.window_effect
+        self.window_effect = tkinter.Tk()
+        self.window_effect.title("Add Product")
         div_effect = tkinter.LabelFrame(
-            self.window_add,
+            self.window_effect,
             bd=3,
             relief="solid",
-            text="Add Product :",
+            text="Edit Product :",
             padx=10,
             pady=10
         )
         div_effect.pack(fill="both",side="top")
         
-        self.product_name_var = tkinter.StringVar()
+        self.edit_product_name_var = tkinter.StringVar()
         tkinter.Label(div_effect,text="Product Name:").pack()
-        product_name = tkinter.Entry(div_effect , textvariable=self.product_name_var)
+        product_name = tkinter.Entry(div_effect , textvariable=self.edit_product_name_var)
         product_name.pack()
         error_product = tkinter.Label(div_effect,fg="red").pack()
         
@@ -393,43 +423,43 @@ class window_effect:
             
             print(self.option_category)
             tkinter.Label(div_effect,text="Category:").pack()
-            self.product_category_var = tkinter.StringVar()
+            self.edit_product_category_var = tkinter.StringVar()
             category_select = ttk.Combobox(div_effect,
-                        textvariable=self.product_category_var,
+                        textvariable=self.edit_product_category_var,
                         values=list(self.option_category.keys()),
                         state="readonly"
                         )
             category_select.pack()
             error_category = tkinter.Label(div_effect,fg="red").pack()
         else:
-            self.window_add.destroy()
+            self.window_effect.destroy()
         
         option_type_quantity=self.dbconn.list_diff_type_quantity()
         if self.condition_set.result_query_search(option_type_quantity) :
             tkinter.Label(div_effect,text="Type Quantity:").pack()
-            self.product_type_quantity_var = tkinter.StringVar()
+            self.product_edit_type_quantity_var = tkinter.StringVar()
             type_quantity_select = ttk.Combobox(div_effect,
-                        textvariable=self.product_type_quantity_var,
+                        textvariable=self.product_edit_type_quantity_var,
                         values=option_type_quantity
                         )
             type_quantity_select.pack()
             error_type_quantity = tkinter.Label(div_effect,fg="red").pack()
         else:
-            self.window_add.destroy()
+            self.window_effect.destroy()
         
-        self.quantity_var = tkinter.StringVar()
+        self.edit_quantity_var = tkinter.StringVar()
         tkinter.Label(div_effect,text="Quantity :").pack()
-        Quantity = tkinter.Entry(div_effect , textvariable=self.quantity_var)
+        Quantity = tkinter.Entry(div_effect , textvariable=self.edit_quantity_var)
         Quantity.pack()
         error_quantity = tkinter.Label(div_effect,fg="red").pack()
         
         if hasattr(self,"update_old_value"):
-            self.product_name_var.set(self.old_value[0])
-            self.product_category_var.set(self.old_value[1])
-            self.product_type_quantity_var.set(self.old_value[2])
-            self.quantity_var.set(self.old_value[3])
+            self.edit_product_name_var.set(self.update_old_value[0])
+            self.edit_product_category_var.set(self.update_old_value[1])
+            self.product_edit_type_quantity_var.set(self.update_old_value[2])
+            self.edit_quantity_var.set(self.update_old_value[3])
         
-        if hasattr(self,"window_add_error_warning") and len(self.window_add_error_warning) >0 :
+        if hasattr(self,"window_edit_error_warning") and len(self.window_edit_error_warning) >0 :
             # combobox style
             style = ttk.Style()
             style.configure(
@@ -438,44 +468,90 @@ class window_effect:
                 lightcolor="red",
                 darkcolor="red"
             )
-            if "product_name" in self.window_add_error_warning:
+            if "product_name" in self.window_edit_error_warning:
                 
                 product_name['highlightthickness']=2
                 #product_name['highlightbackground']="red"
                 product_name['highlightcolor']="red"
-                error_product['text']=self.window_add_error_warning['product_name']
+                error_product['text']=self.window_edit_error_warning['product_name']
                 
-            if "category" in self.window_add_error_warning:
+            if "category" in self.window_edit_error_warning:
                 category_select['style']="Red.TCombobox"
-                error_category['text']=self.window_add_error_warning['category']
+                error_category['text']=self.window_edit_error_warning['category']
                 
-            if "type_quantity" in self.window_add_error_warning:
+            if "type_quantity" in self.window_edit_error_warning:
                 type_quantity_select['style']="Red.TCombobox"
                 
-                error_type_quantity['text']=self.window_add_error_warning['type_quantity']
+                error_type_quantity['text']=self.window_edit_error_warning['type_quantity']
                 
-            if "quantity" in self.window_add_error_warning:
+            if "quantity" in self.window_edit_error_warning:
                 product_name['highlightthickness']=2
                 #product_name['highlightbackground']="red"
                 product_name['highlightcolor']="red"
                 
-                error_quantity['text']=self.window_add_error_warning['quantity']
+                error_quantity['text']=self.window_edit_error_warning['quantity']
                 
-            del self.window_add_error_warning
+            del self.window_edit_error_warning
         
         button =tkinter.Button(div_effect, text="Edit", command=self.f_insert_product ,width=16)
         button.pack()
         
-        self.window_add.mainloop()
+        self.window_effect.mainloop()
+        
+    def f_edit_product(self):
+        self.window_edit_error_warning={}
+        error_count = 0
+        self.old_value=[]
+        
+        self.old_value.append(self.product_name_var.get())
+        self.old_value.append(self.product_category_var.get())
+        self.old_value.append(self.product_type_quantity_var.get())
+        self.old_value.append(self.quantity_var.get())
+        
+        if   self.product_name_var.get() == "":
+            self.inputvalue.append(self.product_name_var.get())
+        else:
+            self.window_edit_error_warning['product_name']='please input the product name !'
+            error_count+=1
+            
+        if self.product_category_var.get() != "":
+            self.inputvalue.append(self.option_category[self.product_category_var.get()])
+        else:
+            self.window_edit_error_warning['category']='please input the category !'
+            error_count+=1
+            
+        if self.product_type_quantity_var.get() != "":
+            self.inputvalue.append(self.product_type_quantity_var.get())
+        else:
+            self.window_edit_error_warning['type_quantity']='please input the type quantity !'
+            error_count+=1
+            
+        if self.quantity_var.get() != "":
+            if self.condition_set.in_numeric(self.quantity_var.get()):
+                self.inputvalue.append(float(self.quantity_var.get()))
+            else:
+                self.window_edit_error_warning['quantity']='textbox quantity is number !' 
+        else:
+            self.window_edit_error_warning['quantity']='please input the quantity !'
+            error_count+=1
+        
+        if error_count < 0 :
+            result = self.dbconn.update_product(self.inputvalue)
+            if result :
+                self.window_effect.destroy()
+            else:
+                self.window_edit_product(self.update_id)
+        elif error_count > 0:
+            self.window_edit_product(self.update_id)
         
     def window_add_product(self):
-        if hasattr(self,"window_add") and self.window_add.winfo_exists:
-            self.window_add.destroy()
-            del self.window_add
-        self.window_add = tkinter.Tk()
-        self.window_add.title("Edit Product")
+        if hasattr(self,"window_effect") and self.window_effect.winfo_exists:
+            self.window_effect.destroy()
+            del self.window_effect
+        self.window_effect = tkinter.Tk()
+        self.window_effect.title("Edit Product")
         div_effect = tkinter.LabelFrame(
-            self.window_add,
+            self.window_effect,
             bd=3,
             relief="solid",
             text="Add Product :",
@@ -507,7 +583,7 @@ class window_effect:
             category_select.pack()
             error_category = tkinter.Label(div_effect,fg="red").pack()
         else:
-            self.window_add.destroy()
+            self.window_effect.destroy()
         
         option_type_quantity=self.dbconn.list_diff_type_quantity()
         if self.condition_set.result_query_search(option_type_quantity) :
@@ -520,7 +596,7 @@ class window_effect:
             type_quantity_select.pack()
             error_type_quantity = tkinter.Label(div_effect,fg="red").pack()
         else:
-            self.window_add.destroy()
+            self.window_effect.destroy()
         
         self.quantity_var = tkinter.StringVar()
         tkinter.Label(div_effect,text="Quantity :").pack()
@@ -566,7 +642,7 @@ class window_effect:
         button =tkinter.Button(div_effect, text="Insert", command=self.f_insert_product ,width=16)
         button.pack()
         
-        self.window_add.mainloop()
+        self.window_effect.mainloop()
     
     def f_insert_product(self):
         self.window_add_error_warning={}
@@ -608,7 +684,7 @@ class window_effect:
         if error_count < 0 :
             result = self.dbconn.insert_product(self.inputvalue)
             if result :
-                self.window_add.destroy()
+                self.window_effect.destroy()
             else:
                 self.window_add_product()
         elif error_count > 0:
@@ -682,7 +758,7 @@ class condition_set:
         except:
             return False
         
-    def result_query_search(result):
+    def result_query_search(self, result):
         if isinstance(result, (list, tuple, set)):
             return True
         else:
