@@ -239,21 +239,44 @@ class storage:
         self.set_condition = condition_set()
         
     def main_window(self):
+        if hasattr(self , "storage") and self.storage.winfo_exists :
+            self.storage.destroy()
+            self.inputvalue={}
+            del self.category_name_var
+            
         self.storage = tkinter.Tk()
-        self.table = ttk.Treeview(self.storage)
-        self.table['columns']=("Id","product","category","type_quantity","product_quantity")
-        self.table.heading("#0",text="No.")
-        self.table.heading("Id",text="ID")
-        self.table.heading("product",text="Product")
-        self.table.heading("category",text="Category")
-        self.table.heading("type_quantity",text="Type Quantity")
-        self.table.heading("product_quantity",text="Quantity")
-        self.treeview_refresh()
-        self.table.pack(fill="both",side="left")
-        self.table.bind("<<TreeviewSelect>>",)
+        
+        selection_plece=tkinter.Frame(
+            self.storage,
+            padx=25,
+            pady=12
+        )
+        selection_plece.pack(fill="both",side="top")
+        
+        button_category = tkinter.Button(selection_plece,text="Category",command=self.window_category , width=25)
+        button_category.pack()
+        
+        main_plece=tkinter.Frame(
+            self.storage,
+            padx=25,
+            pady=12
+        )
+        main_plece.pack(fill="both",side="bottom")
+        
+        self.table_product = ttk.Treeview(main_plece)
+        self.table_product['columns']=("Id","product","category","type_quantity","product_quantity")
+        self.table_product.heading("#0",text="No.")
+        self.table_product.heading("Id",text="ID")
+        self.table_product.heading("product",text="Product")
+        self.table_product.heading("category",text="Category")
+        self.table_product.heading("type_quantity",text="Type Quantity")
+        self.table_product.heading("product_quantity",text="Quantity")
+        self.product_treeview_refresh()
+        self.table_product.pack(fill="both",side="left")
+        self.table_product.bind("<<TreeviewSelect>>",self.f_product_selected)
         
         div=tkinter.Frame(
-            self.storage,
+            main_plece,
             bd=3,
             relief="solid",
             padx=12,
@@ -326,53 +349,166 @@ class storage:
         add_product_button = tkinter.Button( div_effect,text="Add Product", command=self.window_effect.window_add_product ,width=16)
         add_product_button.pack()
         
+        self.delete_product_button = tkinter.Button( div_effect,text="Delete Product", command=self.f_delete_product , state="disabled" ,width=16)
+        self.delete_product_button.pack()
+        
+        self.update_product_button = tkinter.Button( div_effect,text="Edit Product" , state="disabled" ,width=16)
+        self.update_product_button.pack()
+        
+        self.storage.mainloop()
+        
+        
+    def window_category(self):
+        if hasattr(self , "storage") and self.storage.winfo_exists :
+            self.storage.destroy()
+            self.inputvalue={}
+            del self.product_name_var
+            self.option_category.clear()
+            del self.product_category_var
+            del self.product_type_quantity_var
+            
+        self.storage = tkinter.Tk()
+        
+        selection_plece=tkinter.Frame(
+            self.storage,
+            padx=25,
+            pady=12
+        )
+        selection_plece.pack(fill="both",side="top")
+        
+        button_category = tkinter.Button(selection_plece,text="Storage",command=self.main_window , width=25)
+        button_category.pack()
+        
+        main_plece=tkinter.Frame(
+            self.storage,
+            padx=25,
+            pady=12
+        )
+        main_plece.pack(fill="both",side="bottom")
+        
+        self.table_category = ttk.Treeview(main_plece)
+        self.table_category['columns']=("Id","category")
+        self.table_category.heading("#0",text="No.")
+        self.table_category.heading("Id",text="ID")
+        self.table_category.heading("category",text="Category")
+        self.category_treeview_refresh()
+        self.table_category.pack(fill="both",side="left")
+        self.table_category.bind("<<TreeviewSelect>>",)
+        
+        div=tkinter.Frame(
+            main_plece,
+            bd=3,
+            relief="solid",
+            padx=12,
+            pady=12
+        )
+        div.pack(fill="both",side="right")
+        
+        div_search = tkinter.LabelFrame(
+            div,
+            bd=3,
+            relief="solid",
+            text="Search Category :",
+            padx=10,
+            pady=10
+        )
+        div_search.pack(fill="both",side="top")
+        
+        self.category_name_var = tkinter.StringVar()
+        tkinter.Label(div_search,text="Category Name:").pack()
+        category_name_search = tkinter.Entry(div_search , textvariable=self.category_name_var)
+        category_name_search.pack()
+
+        button = tkinter.Button( div_search,text="Search", command=self.button_search_category,width=16)
+        button.pack()
+        
+        div_effect = tkinter.LabelFrame(
+            div,
+            bd=3,
+            relief="solid",
+            text="Categoey :",
+            padx=10,
+            pady=10
+        )
+        div_effect.pack(fill="both",side="bottom")
+        
         add_category_button = tkinter.Button( div_effect,text="Add Category", command=self.window_effect.window_add_category ,width=16)
         add_category_button.pack()
         
-        self.delete_button = tkinter.Button( div_effect,text="Delete Product", command=self.f_delete_data , state="disabled" ,width=16)
-        self.delete_button.pack()
+        self.delete_category_button = tkinter.Button( div_effect,text="Delete Category", command=self.f_delete_category , state="disabled" ,width=16)
+        self.delete_category_button.pack()
         
-        self.update_button = tkinter.Button( div_effect,text="Edit Product" , state="disabled" ,width=16)
-        self.update_button.pack()
-        
-        
+        self.update_category_button = tkinter.Button( div_effect,text="Edit Category" , state="disabled" ,width=16)
+        self.update_category_button.pack()
         
         self.storage.mainloop()
+        
+    def f_delete_category(self):
+        selected_item = self.table_category.selection()
+        result = self.dbconn.delete_category(selected_item[0])
+        if result :
+            self.category_treeview_refresh()
+        
+    def button_search_category(self):
+        self.inputvalue["category"]=self.category_name_var.get()
+        self.category_treeview_refresh()
+    
+    def category_treeview_refresh(self):
+        self.table_category.delete(*self.table_category.get_children())
+        alldata=self.dbconn.search_category(self.inputvalue)
+        if self.set_condition.result_query_search(alldata):
+            print(self.dbconn.search_category(self.inputvalue))
+            if len(alldata) >0: 
+                count=1
+                for data in alldata:
+                    self.table_category.insert("","end",text=f"{count}" ,values=(data[0],data[1]))
+                    count+=1
+    
+    def f_category_selected(self,event):
+        selected_item = self.table_product.selection()
+        if not selected_item :
+            self.delete_category_button["state"]="disabled"
+            self.update_category_button["state"]="disabled"
+            self.update_category_button["command"]=self.window_effect.window_edit_category(selected_item[0])
+        else:
+            self.delete_category_button["state"]="normal"
+            self.update_category_button["state"]="normal"
+            self.update_category_button["command"]=""
         
     def button_search_product(self):
         self.inputvalue["name"]=self.product_name_var.get()
         self.inputvalue["type_quantity"]=self.product_type_quantity_var.get()
         self.inputvalue["category"]=self.option_category[self.product_category_var.get()]
-        self.treeview_refresh()
+        self.product_treeview_refresh()
         
-    def f_item_selected(self,event):
-        selected_item = self.table.selection()
+    def f_product_selected(self,event):
+        selected_item = self.table_product.selection()
         if not selected_item :
-            self.delete_button["state"]="disabled"
-            self.update_button["state"]="disabled"
-            self.update_button["command"]=self.window_effect.window_edit_product(selected_item[0])
+            self.delete_product_button["state"]="disabled"
+            self.update_product_button["state"]="disabled"
+            self.update_product_button["command"]=self.window_effect.window_edit_product(selected_item[0])
         else:
-            self.delete_button["state"]="normal"
-            self.update_button["state"]="normal"
-            self.update_button["command"]=""
+            self.delete_product_button["state"]="normal"
+            self.update_product_button["state"]="normal"
+            self.update_product_button["command"]=""
         
     
-    def f_delete_data(self):
-        selected_item = self.table.selection()
+    def f_delete_product(self):
+        selected_item = self.table_product.selection()
         result = self.dbconn.delete_product(selected_item[0])
         if result :
-            self.treeview_refresh()
+            self.product_treeview_refresh()
             
         
-    def treeview_refresh(self):
-        self.table.delete(*self.table.get_children())
+    def product_treeview_refresh(self):
+        self.table_product.delete(*self.table_product.get_children())
         alldata=self.dbconn.search_product(self.inputvalue)
         if self.set_condition.result_query_search(alldata):
             print(self.dbconn.search_product(self.inputvalue))
             if len(alldata) >0: 
                 count=1
                 for data in alldata:
-                    self.table.insert("","end",text=f"{count}" ,values=(data[0],data[1],data[4],data[2],data[3]))
+                    self.table_product.insert("","end",text=f"{count}" ,values=(data[0],data[1],data[4],data[2],data[3]))
                     count+=1
         
 
