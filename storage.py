@@ -156,6 +156,14 @@ class connect_database():
             self.alert.error("Search Category Failed!")
             return False
     
+    def id_search_category(self,target_id):
+        try:
+            self.conn.execute(f"""SELECT `category_id`,`category` FROM `storage_category` WHERE `category_id`={target_id}""")
+            return self.conn.fetchall()
+        except:
+            self.alert.error("Search Category Failed!")
+            return False
+    
     def insert_category(self,newdata):
         try:
             self.conn.execute(f"SELECT `category_id` FROM `storage_category`WHERE `category`='{newdata}'")
@@ -533,6 +541,7 @@ class window_effect:
         if hasattr(self,"window_effect") and self.window_effect.winfo_exists:
             self.window_effect.destroy()
             del self.window_effect
+            del self.inputcategory
         self.window_effect = tkinter.Tk()
         self.window_effect.title("Add Product")
         div_effect = tkinter.LabelFrame(
@@ -629,7 +638,7 @@ class window_effect:
                 
             del self.window_edit_error_warning
         
-        button =tkinter.Button(div_effect, text="Edit", command=self.f_insert_product ,width=16)
+        button =tkinter.Button(div_effect, text="Edit", command=self.f_edit_product ,width=16)
         button.pack()
         
         self.window_effect.mainloop()
@@ -672,8 +681,9 @@ class window_effect:
             error_count+=1
         
         if error_count < 0 :
-            result = self.dbconn.update_product(self.inputvalue)
+            result = self.dbconn.update_product(self.inputvalue,self.update_id)
             if result :
+                del self.update_id
                 self.window_effect.destroy()
             else:
                 self.window_edit_product(self.update_id)
@@ -827,13 +837,13 @@ class window_effect:
             self.window_add_product()
             
     def window_add_category(self):
-        if hasattr(self,"window_insert_category") and self.window_insert_category.winfo_exists:
-            self.window_insert_category.destroy()
-            del self.window_insert_category
-        self.window_insert_category = tkinter.Tk()
-        self.window_insert_category.title("Add Product")
+        if hasattr(self,"window_effect") and self.window_effect.winfo_exists:
+            self.window_effect.destroy()
+            del self.window_effect
+        self.window_effect = tkinter.Tk()
+        self.window_effect.title("Add Product")
         div_effect = tkinter.LabelFrame(
-            self.window_insert_category,
+            self.window_effect,
             bd=3,
             relief="solid",
             text="Add Product :",
@@ -842,49 +852,117 @@ class window_effect:
         )
         div_effect.pack(fill="both",side="top")
         
-        self.category_var = tkinter.StringVar()
+        self.category_category_var = tkinter.StringVar()
         tkinter.Label(div_effect,text="Quantity :").pack()
-        category = tkinter.Entry(div_effect , textvariable=self.category_var)
+        category = tkinter.Entry(div_effect , textvariable=self.category_category_var)
         category.pack()
         error_category = tkinter.Label(div_effect,fg="red").pack()
         
-        if hasattr(self,"window_add_category_error_warning") and len(self.window_add_category_error_warning) >0 :
+        if hasattr(self,"window_category_error_warning") and len(self.window_category_error_warning) >0 :
                 
-            if "category" in self.window_add_category_error_warning:
+            if "category" in self.window_category_error_warning:
                 category['highlightthickness']=2
                 #product_name['highlightbackground']="red"
                 category['highlightcolor']="red"
-                self.category_var.set(self.window_add_category_old_value[3])
-                error_category['text']=self.window_add_category_error_warning['quantity']
+                self.category_category_var.set(self.inputcategory)
+                error_category['text']=self.window_category_error_warning['category']
                 
-            del self.window_add_category_error_warning
+            del self.window_category_error_warning
         
         button =tkinter.Button(div_effect, text="Insert", command=self.f_insert_category ,width=16)
         button.pack()
         
-        self.window_insert_category.mainloop()
+        self.window_effect.mainloop()
            
     def f_insert_category(self):
-        self.window_add_category_error_warning={}
+        self.window_category_error_warning={}
         error_count = 0
-        self.window_add_category_old_value=[]
 
-        self.window_add_category_old_value.append(self.product_category_var.get())
+        self.window_add_category_old_value = self.category_category_var.get()
         
-        if   self.product_name_var.get() == "":
-            self.inputvalue.append(self.product_name_var.get())
+        if   self.category_category_var.get() == "":
+            self.inputcategory=self.category_category_var.get()
         else:
-            self.window_add_category_error_warning['product_name']='please input the category !'
+            self.window_category_error_warning['category']='please input the category !'
             error_count+=1
         
         if error_count < 0 :
-            result = self.dbconn.insert_product(self.inputvalue)
+            result = self.dbconn.insert_category(self.inputcategory)
             if result :
-                self.window_insert_category.destroy()
+                self.window_effect.destroy()
             else:
                 self.window_add_category()
         elif error_count > 0:
             self.window_add_category()
+        
+    def window_edit_category(self,target_id):
+        if hasattr(self,"window_effect") and self.window_effect.winfo_exists:
+            self.window_effect.destroy()
+            del self.window_effect
+        if hasattr(self,"inputcategory") != False:
+            result = self.dbconn.id_search_category(target_id)
+            self.update_id = target_id
+            if self.condition_set.result_query_search(result):
+                oldvalue = result[0][1] 
+        else:
+            oldvalue = self.inputcategory 
+        self.window_effect = tkinter.Tk()
+        self.window_effect.title("Add Product")
+        div_effect = tkinter.LabelFrame(
+            self.window_effect,
+            bd=3,
+            relief="solid",
+            text="Add Product :",
+            padx=10,
+            pady=10
+        )
+        div_effect.pack(fill="both",side="top")
+        
+        self.category_category_var = tkinter.StringVar()
+        tkinter.Label(div_effect,text="Quantity :").pack()
+        category = tkinter.Entry(div_effect , textvariable=self.category_category_var)
+        category.pack()
+        error_category = tkinter.Label(div_effect,fg="red").pack()
+        
+        self.category_category_var.set(oldvalue)
+        
+        if hasattr(self,"window_category_error_warning") and len(self.window_category_error_warning) >0 :
+                
+            if "category" in self.window_category_error_warning:
+                category['highlightthickness']=2
+                #product_name['highlightbackground']="red"
+                category['highlightcolor']="red"
+                self.category_category_var.set(self.window_category_old_value[3])
+                error_category['text']=self.window_category_error_warning['quantity']
+                
+            del self.window_category_error_warning
+        
+        button =tkinter.Button(div_effect, text="Update", command=self.f_update_category ,width=16)
+        button.pack()
+        
+        self.window_effect.mainloop()
+        
+    def f_update_category(self):
+        self.window_category_error_warning={}
+        error_count = 0
+        self.window_category_old_value=[]
+
+        self.window_category_old_value.append(self.category_category_var.get())
+        
+        if   self.category_category_var.get() == "":
+            self.inputcategory=self.category_category_var.get()
+        else:
+            self.window_category_error_warning['product_name']='please input the category !'
+            error_count+=1
+        
+        if error_count < 0 :
+            result = self.dbconn.update_category(self.inputcategory,self.update_id)
+            if result :
+                self.window_effect.destroy()
+            else:
+                self.window_edit_category()
+        elif error_count > 0:
+            self.window_edit_category()
         
 class condition_set:
     def in_numeric(string):
