@@ -202,7 +202,7 @@ class connect_database():
         try:
             self.conn.execute(f"SELECT `category_id` FROM `storage_category`WHERE `category_id`={target_id}")
             result=self.conn.fetchall()
-            if len(result) < 1 :
+            if len(result) == 1 :
                 self.conn.execute(f"DELETE FROM `storage_category` WHERE `category_id`={target_id}")
                 self.dbconn.commit()
                 self.alert.successfull("This category delete successfull!")
@@ -443,18 +443,19 @@ class storage:
         add_category_button = tkinter.Button( div_effect,text="Add Category", command=self.window_effect.window_add_category ,width=16)
         add_category_button.pack()
         
+        self.update_category_button = tkinter.Button( div_effect,text="Edit Category" , command=self.category_edit , state="disabled" ,width=16)
+        self.update_category_button.pack()
+        
         self.delete_category_button = tkinter.Button( div_effect,text="Delete Category", command=self.f_delete_category , state="disabled" ,width=16)
         self.delete_category_button.pack()
-        
-        self.update_category_button = tkinter.Button( div_effect,text="Edit Category" , state="disabled" ,width=16)
-        self.update_category_button.pack()
         
         self.storage.mainloop()
         
     def f_delete_category(self):
         selected_item = self.table_category.selection()
-        result = self.dbconn.delete_category(selected_item[0])
-        if result :
+        data = self.table_category.item(selected_item)
+        print(data)
+        if self.dbconn.delete_category(data['values'][0]) :
             self.category_treeview_refresh()
         
     def button_search_category(self):
@@ -462,7 +463,9 @@ class storage:
         self.category_treeview_refresh()
     
     def category_treeview_refresh(self):
+        print(*self.table_category.get_children())
         self.table_category.delete(*self.table_category.get_children())
+        print(*self.table_category.get_children())
         alldata=self.dbconn.search_category(self.inputvalue)
         if self.set_condition.result_query_search(alldata):
             print(alldata)
@@ -474,14 +477,19 @@ class storage:
     
     def f_category_selected(self,event):
         selected_item = self.table_category.selection()
+        result = self.table_category.item(selected_item)
+        print(result['values'])
         if not selected_item :
             self.delete_category_button["state"]="disabled"
             self.update_category_button["state"]="disabled"
-            self.update_category_button["command"]=self.window_effect.window_edit_category(selected_item[0])
         else:
             self.delete_category_button["state"]="normal"
             self.update_category_button["state"]="normal"
-            self.update_category_button["command"]=""
+            
+    def category_edit(self):
+        selected_item = self.table_category.selection()
+        result = self.table_category.item(selected_item)
+        self.window_effect.window_edit_category(result['values'][0])
         
     def button_search_product(self):
         self.inputvalue["name"]=self.product_name_var.get()
@@ -494,11 +502,11 @@ class storage:
         if not selected_item :
             self.delete_product_button["state"]="disabled"
             self.update_product_button["state"]="disabled"
-            self.update_product_button["command"]=self.window_effect.window_edit_product(selected_item[0])
+            self.update_product_button["command"]=""
         else:
             self.delete_product_button["state"]="normal"
             self.update_product_button["state"]="normal"
-            self.update_product_button["command"]=""
+            self.update_product_button["command"]=self.window_effect.window_edit_product(selected_item[0])
         
     
     def f_delete_product(self):
@@ -905,11 +913,12 @@ class window_effect:
             error_count+=1
             
         self.window_effect.destroy()
+        del self.window_effect
+        
         if error_count < 1 :
             if self.dbconn.insert_category(self.inputcategory) :
                 del self.window_category_error_warning
                 del self.category_category_var
-                self.window_effect.destroy()
                 window_storage = storage()
                 window_storage.category_treeview_refresh()
             else:
@@ -920,13 +929,15 @@ class window_effect:
     def window_edit_category(self,target_id):
         if hasattr(self,"window_effect"):
             del self.window_effect
-        if hasattr(self,"inputcategory") != False:
+        if hasattr(self,"inputcategory") == False:
+            print(target_id)
             result = self.dbconn.id_search_category(target_id)
+            print(result)
             self.update_id = target_id
             if self.condition_set.result_query_search(result):
                 oldvalue = result[0][1] 
         else:
-            oldvalue = self.inputcategory 
+            oldvalue = self.inputcategory
         self.window_effect = tkinter.Tk()
         self.window_effect.title("Edit Category")
         div_effect = tkinter.LabelFrame(
@@ -956,9 +967,10 @@ class window_effect:
                 self.category_category_var.insert(0,self.window_category_old_value)
                 error_category['text']=self.window_category_error_warning['quantity']
                 
-            del self.window_category_error_warning
+                del self.window_category_error_warning
+                del self.window_category_old_value
+                
         else:
-            
             self.category_category_var.insert(0,oldvalue)
             
         button =tkinter.Button(div_effect, text="Update", command=self.f_update_category ,width=16)
@@ -975,19 +987,27 @@ class window_effect:
 
         self.window_category_old_value=self.category_category_var.get()
         
-        if   self.category_category_var.get() != "":
-            self.inputcategory=self.category_category_var.get()
+        if self.window_category_old_value != "":
+            self.inputcategory=self.window_category_old_value
         else:
             self.window_category_error_warning['product_name']='please input the category !'
             error_count+=1
+            
+        self.window_effect.destroy()
+        del self.window_effect
         
         if error_count < 0 :
             if self.dbconn.update_category(self.inputcategory,self.update_id) :
-                self.window_effect.destroy()
+                del self.update_id
+                del self.inputcategory
+                window_storage = storage()
+                window_storage.category_treeview_refresh()
             else:
-                self.window_edit_category()
+                self.window_edit_category(self.update_id)
+                del self.update_id
         elif error_count > 0:
-            self.window_edit_category()
+            self.window_edit_category(self.update_id)
+            del self.update_id
     
     def window_destroy(self):
         self.window_effect.destroy()
